@@ -8,13 +8,12 @@ def call(Map configMap){
             disableConcurrentBuilds()
             ansiColor('xterm')
         }
-
         environment{
             def appVersion = '' //variable declaration
-            nexusUrl = pipelineGlobals.nexusURL
-            region =  pipelineGlobals.region
-            account_id = pipelineGlobals.account_id
-            component = cofigMap.get("component")
+            nexusUrl = pipelineGlobals.nexusURL()
+            region =  pipelineGlobals.region()
+            account_id = pipelineGlobals.account_id()
+            component = configMap.get("component")
             project = configMap.get("project")
         }
         stages {
@@ -49,9 +48,9 @@ def call(Map configMap){
                     sh """
                         aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${account_id}.dkr.ecr.${region}.amazonaws.com
 
-                        docker build -t ${account_id}.dkr.ecr.${region}.amazonaws.com/expense-${component}:${appVersion} .
+                        docker build -t ${account_id}.dkr.ecr.${region}.amazonaws.com/${project}-${component}:${appVersion} .
 
-                        docker push ${account_id}.dkr.ecr.${region}.amazonaws.com/expense-${component}:${appVersion}
+                        docker push ${account_id}.dkr.ecr.${region}.amazonaws.com/${project}-${component}:${appVersion}
 
                     """
                 }
@@ -61,7 +60,7 @@ def call(Map configMap){
             stage('Deploy'){
                 steps{
                     sh """
-                        aws eks update-kubeconfig --region us-east-1 --name expense-dev
+                        aws eks update-kubeconfig --region ${region} --name ${project}-dev
                         cd helm
                         sed -i 's/IMAGE_VERSION/${appVersion}/g' values.yaml
                         helm install ${component} -n ${project} .
