@@ -21,6 +21,7 @@ def call(Map configMap){
             stage('read the version'){
                 steps{
                     script{
+                        echo sh(returnStdout: true, script: 'env')
                         def packageJson = readJSON file: 'package.json'
                         appVersion = packageJson.version
                         echo "application version: $appVersion"
@@ -47,7 +48,7 @@ def call(Map configMap){
             }
             stage('Docker build'){
                 steps{
-                    
+
                     sh """
                         aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${account_id}.dkr.ecr.${region}.amazonaws.com
                         docker build -t ${account_id}.dkr.ecr.${region}.amazonaws.com/${project}-${component}:${appVersion} .
@@ -55,14 +56,9 @@ def call(Map configMap){
                     """
                 }
             }
+
             stage('Deploy'){
                 steps{
-                    // sh """
-                    //     aws eks update-kubeconfig --region ${region} --name ${project}-dev
-                    //     cd helm
-                    //     sed -i 's/IMAGE_VERSION/${appVersion}/g' values.yaml
-                    //     helm install ${component} -n ${project} .
-                    // """
                     script{
                         releaseExists = sh(script: "helm list -A --short | grep -w ${component} || true", returnStdout: true).trim()
                         if(releaseExists.isEmpty()){
@@ -83,14 +79,13 @@ def call(Map configMap){
                                 helm upgrade ${component} -n ${project} .
                             """
                         }
-                    }                    
-                    
+                    }
                 }
             }
             stage('Verify Deployment'){
                 steps{
                     script{
-                        rollbackStatus = sh(script: "kubectl rollout status deployment/backend -n ${project} --timeout=1m || true", returnStdout: true).trim()          
+                        rollbackStatus = sh(script: "kubectl rollout status deployment/backend -n ${project} --timeout=1m || true", returnStdout: true).trim()
                         if(rollbackStatus.contains('successfully rolled out')){
                             echo "Deployment is successfull"
                         }
@@ -103,7 +98,7 @@ def call(Map configMap){
                                 sh """
                                 aws eks update-kubeconfig --region ${region} --name ${project}-dev
                                 helm rollback backend -n ${project} 0
-                                sleep(60)
+                                sleep 60
                                 """
                                 rollbackStatus = sh(script: "kubectl rollout status deployment/backend -n expense --timeout=2m || true", returnStdout: true).trim()
                                 if(rollbackStatus.contains('successfully rolled out')){
@@ -112,12 +107,12 @@ def call(Map configMap){
                                 else{
                                     error "Deployment is failed, Rollback is failed"
                                 }
-                            }                            
+                            }
                         }
                     }
                 }
             }
-
+            
             /* stage('Nexus Artifact Upload'){
                 steps{
                     script{
