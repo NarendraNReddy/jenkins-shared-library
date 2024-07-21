@@ -56,17 +56,17 @@ def call(Map configMap){
                     """
                 }
             }
-        //    stage('Deploy'){
-        //         steps{
-        //             sh """
-        //                 aws eks update-kubeconfig --region ${region} --name ${project}-dev
-        //                 cd helm
-        //                 sed -i 's/IMAGE_VERSION/${appVersion}/g' values.yaml
-        //                 helm install ${component} -n ${project} .
+           stage('Deploy'){
+                steps{
+                    sh """
+                        aws eks update-kubeconfig --region ${region} --name ${project}-dev
+                        cd helm
+                        sed -i 's/IMAGE_VERSION/${appVersion}/g' values.yaml
+                        helm install ${component} -n ${project} .
                         
-        //             """
-        //         }
-        //     }          
+                    """
+                }
+            }          
 
             // stage('Deploy'){
             //     steps{
