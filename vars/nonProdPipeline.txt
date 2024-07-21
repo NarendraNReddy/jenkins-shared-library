@@ -1,0 +1,87 @@
+pipeline {
+    agent {
+        label 'AGENT-1'
+    }
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        ansiColor('xterm')
+    }
+    parameters{
+        booleanParam(name: 'deploy', defaultValue: false, description: 'Toggle this value')
+    }
+    environment{
+        def appVersion = '' //variable declaration
+        nexusUrl = 'nexus.narendra.shop:8081'
+        region = "us-east-1"
+        account_id = "905418111046"
+    }
+
+    parameters{
+        //Which component you want to deploy
+        // Which env
+    }
+    stages {
+        stage('Deploy'){
+            steps{
+                script{
+                    // deploy to specific env QA,UAT
+
+              }
+            }
+        }
+        stage('Integration Tests') {
+            steps {
+                // Run integration tests
+
+
+            }
+        }
+        stage('Build'){
+            steps{
+                sh """
+                zip -q -r backend-${appVersion}.zip * -x Jenkinsfile -x backend-${appVersion}.zip
+                ls -ltr
+                """
+            }
+        }
+        stage('Docker build'){
+            steps{
+                sh """
+                    aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${account_id}.dkr.ecr.${region}.amazonaws.com
+
+                    docker build -t ${account_id}.dkr.ecr.${region}.amazonaws.com/expense-backend:${appVersion} .
+
+                    docker push ${account_id}.dkr.ecr.${region}.amazonaws.com/expense-backend:${appVersion}
+
+                """
+            }
+        }
+
+
+        stage('Deploy'){
+            steps{
+                sh """
+                    aws eks update-kubeconfig --region us-east-1 --name expense-dev
+                    cd helm
+                    sed -i 's/IMAGE_VERSION/${appVersion}/g' values.yaml
+                    helm upgrade backend .
+                """
+            }
+        }
+        
+
+    }
+    post { 
+        always { 
+            echo 'I will always say Hello again!'
+            deleteDir()
+        }
+        success { 
+            echo 'I will run when pipeline is success'
+        }
+        failure { 
+            echo 'I will run when pipeline is failure'
+        }
+    }
+}
